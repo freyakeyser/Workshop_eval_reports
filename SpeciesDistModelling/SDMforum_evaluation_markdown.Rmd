@@ -1,0 +1,171 @@
+---
+title: "Species Distribution Modelling Forum"
+output:
+  word_document: 
+    reference_docx: InteractiveToolsMarkdownstyles.docx
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+require(ggplot2)
+require(knitr)
+require(tidyverse)
+require(forcats)
+require(reshape2)
+require(tidyr)
+require(pandoc)
+require(plyr)
+require(pals)
+
+```
+
+### Held February 10, 2020 at BIO
+### Led by Jessica Nephin, DFO, Pacific region
+### Organized by the Maritimes region Habitat Science Working Group
+### Report produced by Freya Keyser, Jessica Sameoto and Catalina Gomez
+
+
+# Executive Summary
+
+Insert text here
+
+# Attendance
+
+Insert text here
+
+# Evaluation by participants
+
+Forum participants were asked to complete an evaluation survey at the end of the forum. Of the 31 attendees, 28 responses were received (90% response rate). Responses were received from DFO, NOAA and NEFMC participants based in the Canadian Pacific, Maritimes, and Newfoundland regions, as well as the US Northeast (Figure 1). Participants worked in a wide range of research areas (Figure 2). 
+
+
+```{r, echo=F, fig.height=4, fig.width=5, fig.align='center', fig.pos="h"}  
+eval <- read.csv("./Species Distribution Modelling Forum Evaluation .csv")
+levels(eval[,2]) <- c("DFO", "NOAA", "NEMFC")
+levels(eval[,3]) <- c("Maritimes", "Maritimes", "Newfoundland", "Pacific", "US Northeast")
+
+q1 <- data.frame(table(eval[, 2:3]))
+names(q1) <- c("Dept", "Region", "Freq")
+
+print(ggplot() + geom_bar(data=q1, aes(Dept, Freq, fill=Region), stat="identity", colour="black") + theme_classic() +
+  xlab("What Department/Agency are you in?") +
+  ylab("Number of survey\nrespondents")  +
+   scale_fill_manual(values=brewer.set1(4)))
+```  
+
+_Figure 1. Survey responses by department and region._
+
+```{r, echo=F, fig.height=4, fig.width=5, fig.align='center', fig.pos="h"}  
+q2response <- eval[, 4]
+q2response <- c(as.character(q2response[!grepl(x=q2response, pattern=",", fixed=T)]), as.character(str_split(string = q2response[grep(x=q2response, pattern=",", fixed=T)], pattern = ", ", simplify = T)))
+q2response <- tolower(q2response)
+q2response <- gsub(q2response, pattern="aquatic inv", replacement="inv")
+q2 <- data.frame(table(q2response))
+names(q2) <- c("Topic", "Freq")
+
+print(ggplot() + geom_bar(data=q2, aes(Topic, Freq), stat="identity", colour="black") + theme_classic() +
+  xlab(NULL) + #"What is your research area?") +
+  ylab("Number of survey respondents")  +
+   scale_fill_manual(values=brewer.set1(4)) +
+   coord_flip())
+```  
+
+_Figure 2. Survey responses by research area._
+
+Participants were asked to rate the forum on various factors on a scale of 0-5 (low to high). The minimum rating for any question was 2, and median ratings were 4 or 5 (Figure 3). 
+
+
+```{r, echo=F, fig.height=3, fig.align='center', fig.pos="h"}
+ratings <- eval[, c(1,5:9)]
+ratings <- melt(ratings, id.vars = "Timestamp")
+ratings$variable <- as.factor(gsub(ratings$variable, pattern=".", replacement =" ", fixed=T))
+ratings$variable <- as.factor(gsub(ratings$variable, pattern="  ", replacement =" ", fixed=T))
+ratings$value <- as.numeric(ratings$value)
+
+numbering <- c("3. ", "4. ", "5. ", "1. ", "2. ")
+levels(ratings$variable) <- paste0(numbering, levels(ratings$variable))
+ratings$variable <- as.factor(as.character(ratings$variable))
+
+ratings_avg <- ddply(.data=ratings, .(variable),
+                     summarize,
+                     mean_rating = mean(value))
+
+ratings$variable <- fct_rev(ratings$variable)
+
+print(ggplot() + geom_boxplot(data=ratings, aes(variable, value)) + 
+        #geom_point(data=ratings_avg, aes(variable, mean_rating), shape=5)+
+        theme_classic() +
+  xlab(NULL) + ylab("Rating from low to high") + 
+  ylim(0,5) +
+  coord_flip())  
+
+```  
+
+_Figure 3. Summary of responses to rating questions. Each rating question was answered by all 28 respondents._
+
+Approximately 69% of survey respondents were interested in participating in a National SDM Working Group, while 86% were interested in participating in a Regional SDM Working Group (Figure 4). Participants offered the following feedback on the idea of forming a National SDM Task Force:
+
+   * Creating an online community for information sharing and communication (e.g. listserv, blog, or Slack group) 
+   * Holding additional more focused workshops for smaller groups
+   * Holding regular meetings regionally or periodic national meetings
+   * Developing an SDM toolbox
+   * Inviting international experts to periodic national meetings to facilitate international collaborations (e.g. as occurred at the Marine Biodiversity Conference in Montreal in 2018, see Kenchington et al. 2019)
+   * Two participants offered to help with future coordination efforts
+  
+```{r, echo=F, fig.height=4, fig.align='center', fig.pos="h"}
+wouldyou <- eval[, c(1, 12, 13)]
+wouldyou <- pivot_longer(data = wouldyou, starts_with("Are"))
+
+wouldyou <- wouldyou %>%
+   group_by(name, value) %>%
+   tally()
+
+wouldyou$name <- as.factor(gsub(wouldyou$name, pattern=".", replacement =" ", fixed=T))
+wouldyou$name <- as.factor(gsub(wouldyou$name, pattern="  ", replacement =" ", fixed=T))
+
+levels(wouldyou$name) <- c("Participate in a National\nSDM Working Group?",
+                           "Participate in a Regional\nSDM Working Group?")
+#levels(wouldyou$value)
+wouldyou$value <- factor(wouldyou$value, levels=c("No", "Yes", "NA"))
+
+ggplot(data=wouldyou[!is.na(wouldyou$value),], aes(name, n, fill=value)) + geom_bar(stat="identity", position="dodge", show.legend = F) + 
+   geom_text(aes(y=0, label=value), vjust=1.25, position=position_dodge(width=0.9), size=3) +
+   theme_bw() + theme(panel.grid=element_blank()) +
+   scale_fill_grey(start = 0.3, end=0.6) +
+   #scale_y_continuous(breaks=seq(0,14, 2))+
+   ylab("Number of responses") +
+   xlab(NULL) +
+   theme(axis.text.x = element_text(size=10), axis.title.y = element_text(size=10))
+
+```
+
+_Figure 4. Summary of participants' interest in participating in a national (28 responses) or regional (26 responses) SDM working group._
+ 
+For future SDM training opportunities, respondents suggested the following topics and instructors:
+
+   * Assembling environmental predictors
+   * Working through GAMs
+   * Boosted regression trees and other machine learning approaches
+   * Modelling Spatial Point Processes with inlabru (David Borchers, Janine Illian, Finn Lindgren)
+   * Hierarchical Modelling of Species Communities (Otso Ovaskainen)
+   * Model-based multivariate analysis of abundance data using R (David Warton)
+   * Dynamic Ocean management
+   * sdmTMB toolbox (Sean Anderson)
+   * Use of SDM in Climate Change Projections
+   
+Participants also highlighted:
+
+   * the benefits of connecting with scientists from other regions
+   * they learned a lot from this opportunity
+   * there would be value in forming subject-based, regional or national working groups
+   * many participants feel that their time is already fully subscribed
+   * further discussions at a more technical level
+   * discussions were engaging and effective
+   * the forum was well organized
+   * the Webex format was effective
+
+
+# References
+Kenchington, E., Callery, O., Davidson, F., Grehan, A., Morato, T., Appiott, J., Davis, A., Dunstan, P., Du Preez, C., Finney, J., González-Irusta, J.M., Howell, K., Knudby, A., Lacharité, M., Lee, J., Murillo, F.J., Beazley, L., Roberts, J.M., Roberts, M., Rooper, C., Rowden, A., Rubidge, E., Stanley, R., Stirling, D., Tanaka, K.R., Vanhatalo, J., Weigel, B., Woolley, S. and Yesson, C. 2019. Use of Species Distribution Modeling in the Deep Sea. Can. Tech. Rep. Fish. Aquat. Sci. 3296: ix + 76 p.

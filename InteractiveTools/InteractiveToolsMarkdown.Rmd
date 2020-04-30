@@ -1,0 +1,164 @@
+---
+title: "Interactive Tools for Science Advice Workshop"
+output:
+  word_document: 
+    reference_docx: InteractiveToolsMarkdownstyles.docx
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+require(ggplot2)
+require(knitr)
+require(tidyverse)
+require(forcats)
+require(reshape2)
+require(tidyr)
+require(pandoc)
+require(plyr)
+
+```
+
+### Held November 5, 2019 at BIO
+### Led by Dr. Paul Regular, DFO, Newfoundland and Labrador region
+### Organized by the Maritimes region Habitat Science Working Group
+### Report produced by Freya Keyser, Jessica Sameoto and Catalina Gomez
+
+
+# Executive Summary
+
+In the age of big data, scientists across many fields are faced with the challenge of synthesizing and communicating information from large and complex data sets. This growth in data, alongside the computational methods used to integrate it, can make the process of communicating the results to stakeholders and managers in a meaningful way more daunting. The traditional approach of presenting information across a series of static slides and plots often fails to convey the richness of information available and, as such, important patterns and details are easily overlooked.
+
+Dr. Paul Regular and his co-workers in Newfoundland and Labrador region contend that this problem can be mediated through the effective use of new open source tools for building interactive visualizations (e.g. R packages such as flexdashboard, shiny and plotly). These tools allow a broader audience to conduct detailed explorations of the results, leading to a deeper and collective understanding of both the data and models used to inform Science advice. As a consequence, the peer review process is more open and accessible and the resulting science advice is improved and widely supported.
+
+This one-day workshop was organized by the Habitat Science Working Group through financial support from DFO Science BMC. The objective of this one-day workshop was to learn about the use of interactive tools, its role in supporting Science advice, and a discussion of a path-forward to extend this to spatial approaches in DFO.
+
+# Attendance
+
+A total of 29 Maritimes Region Science staff attended the November 5th workshop (Appendix 1). The workshop included attendees from all Science divisions. Some participants were only available for the final discussion session. 
+
+
+# Evaluation by participants
+
+Workshop participants were asked to complete an evaluation survey at the end of the workshop. Of the 29 attendees, 19 responses were received (65% response rate). Responses were received from participants in the four Science divisions (Figure 1).
+
+
+```{r, echo=F, fig.height=2.5, fig.width=5, fig.align='center', fig.pos="h"}  
+eval <- read.csv("./Interactive Tools For Science Advice - Workshop Evaluation .csv")
+
+q1 <- data.frame(table(eval[, 2]))
+levels(q1$Var1) <- c("CESD", "OESD", "ODIS", "PED")
+
+print(ggplot() + geom_bar(data=q1, aes(Var1, Freq), stat="identity") + theme_classic() +
+  xlab("What Science Division are you in?") +
+  ylab("Number of survey\nrespondents"))  
+```  
+
+_Figure 1. Survey responses by science division._
+
+Participants were asked to rate the workshop on various factors on a scale of 0-5 (low to high). The minimum rating for any question was 3, and average ratings were all above 4 (Figure 2). 
+
+
+```{r, echo=F, fig.height=3, fig.align='center', fig.pos="h"}
+ratings <- eval[, c(1,3:10)]
+ratings <- melt(ratings, id.vars = "Timestamp")
+ratings$variable <- as.factor(gsub(ratings$variable, pattern=".", replacement =" ", fixed=T))
+ratings$variable <- as.factor(gsub(ratings$variable, pattern="  ", replacement =" ", fixed=T))
+ratings$value <- as.numeric(ratings$value)
+
+numbering <- c("4. ", "6. ", "2. ", "7. ", "8. ", "1. ", "3. ", "5. ")
+levels(ratings$variable) <- paste0(numbering, levels(ratings$variable))
+ratings$variable <- as.factor(as.character(ratings$variable))
+
+ratings_avg <- ddply(.data=ratings, .(variable),
+                     summarize,
+                     mean_rating = mean(value))
+
+ratings$variable <- fct_rev(ratings$variable)
+
+print(ggplot() + geom_boxplot(data=ratings, aes(variable, value)) + 
+        geom_point(data=ratings_avg, aes(variable, mean_rating))+
+        theme_classic() +
+  xlab(NULL) + ylab("Rating from low to high") + 
+  ylim(0,5) +
+  coord_flip())  
+
+```  
+
+_Figure 2. Summary of responses to rating questions. Each rating question was answered by 19 respondents._
+
+All survey respondents answered that they would recommend this workshop to others. 12 respondents provided comments. They highlighted:
+
+   * the content was interesting and was highly applicable to their work activities
+   * they enjoyed engaging with others outside their normal workgroup
+   * they felt they learned a lot
+   
+ 
+All survey respondents answered that they would try the techniques used in the course. 10 respondents provided comments. They highlighted:
+
+   * the communication value of using dashboards with stakeholders or in CSAS processes to improve comprehension and transparency
+   * the efficiency of using dashboards to explore and quality control data
+
+
+There were 8 responses to the question "What were you hoping to learn in this workshop that you did not?" Responses included:
+
+   * mapping
+   * presentation methods
+   * integrating Shiny into a dashboard format
+   * more examples and more time to practice
+ 
+
+Participants were asked for suggestions of topics for future workshops. The 8 responses highlighted:
+
+   * cloud computing with RStudio
+   * Shiny
+   * spatial modelling/analysis
+   * Github
+   * R package development
+   * integrating work between units/divisions
+ 
+ 
+
+Survey respondents reported that they would be most available for future workshops between November and March (Figure 3).
+
+```{r, echo=F, fig.height=3, fig.align='center', fig.pos="h"}
+whichmonths <- eval[, c(1,17)]
+
+df <- data.frame(month=format(ISOdatetime(2000,1:12,1,0,0,0),"%b"), num=1:12, count=NA)
+for (i in 1:12){
+  df[df$month == format(ISOdatetime(2000,1:12,1,0,0,0),"%b")[i],]$count <- length(grep(whichmonths[,2], pattern=format(ISOdatetime(2000,1:12,1,0,0,0),"%b")[i]))
+}
+
+print(ggplot() + geom_bar(data=df, aes(fct_reorder(month, num), count), stat="identity") + theme_classic() +
+  xlab("Month") +
+  ylab("Number of respondents available"))
+
+```  
+
+_Figure 3. Participant availability by month._
+
+
+# Appendix 1. Agenda
+
+
+_Table 1. Workshop agenda on November 5, 2019._ 
+```{r, echo=F, out.height="100%", out.width="100%", fig.pos="h"}
+knitr::include_graphics("./agenda.png")
+```
+
+
+# Appendix 2. Participant list 
+
+
+
+_Table 2. List of participants in November 5, 2019 workshop. Participants denoted with an asterisk were only available for the final discussion session._
+```{r, echo=F, fig.pos="h"}
+plist <- read.csv("./participant list.csv")
+plist <- select(plist, -Attended.Nov.5)
+plist <- select(plist, -Email)
+plist <- arrange(plist, Participant)
+kable(plist, format="pandoc")
+```
+
