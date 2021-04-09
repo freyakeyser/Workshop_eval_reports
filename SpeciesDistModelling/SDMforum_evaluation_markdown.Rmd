@@ -44,7 +44,7 @@ Forum participants were asked to complete an evaluation survey at the end of the
 ```{r, echo=F, fig.height=4, fig.width=5, fig.align='center', fig.pos="h"}  
 eval <- read.csv("./Species Distribution Modelling Forum Evaluation .csv")
 levels(eval[,2]) <- c("DFO", "NOAA", "NEMFC")
-levels(eval[,3]) <- c("Maritimes", "Maritimes", "Newfoundland", "Pacific", "US Northeast")
+levels(eval[,3]) <- c("Maritimes", "Maritimes", "Newfoundland & Labrador", "Pacific", "US Northeast")
 
 q1 <- data.frame(table(eval[, 2:3]))
 names(q1) <- c("Dept", "Region", "Freq")
