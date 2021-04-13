@@ -1,0 +1,192 @@
+---
+title: "A general framework for estimating the spatio-temporal distribution of a species using multiple data types"
+output:
+  word_document: 
+    reference_docx: InteractiveToolsMarkdownstyles.docx
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+require(ggplot2)
+require(knitr)
+require(tidyverse)
+require(forcats)
+require(reshape2)
+require(tidyr)
+require(pandoc)
+require(plyr)
+require(pals)
+require(patchwork)
+
+```
+
+### Held February 17-19, 2021 via Microsoft Teams
+### Instructors: Joe Watson and Marie Auger-Méthé (UBC)
+### Organizers: Shelley Lang and Catalina Gomez
+### Report produced by Freya Keyser and Catalina Gomez
+
+
+# Executive Summary
+
+Insert text here
+
+# Attendance
+
+Insert text here
+
+# Evaluation by participants
+
+Forum participants were asked to complete an evaluation survey at the end of the forum. Of the **n** attendees, 23 responses were received (**25%** response rate). Responses were received from DFO and ECCC participants based in the Pacific, Maritimes, Gulf, Ontario and Prairie, Quebec, and Newfoundland and Labrador regions (Figure 1). Participants worked in a wide range of research areas (Figure 2). 
+
+
+```{r, echo=F, fig.height=4, fig.width=6, fig.align='center', fig.pos="h"}  
+eval <- read.csv("./A general framework for estimating the spatio-temporal distribution of a species using multiple data types - February 2021.csv")
+levels(eval[,2]) <- c("ECCC", "DFO")
+
+q1 <- data.frame(table(eval[, 2:3]))
+names(q1) <- c("Dept", "Region", "Freq")
+
+print(ggplot() + geom_bar(data=q1, aes(Dept, Freq, fill=Region), stat="identity", colour="black", position="dodge") + theme_classic() +
+  xlab("What Department/Agency are you in?") +
+  ylab("Number of survey\nrespondents")  +
+   scale_fill_manual(values=brewer.set1(6)))
+```  
+
+_Figure 1. Survey responses by department and region._
+
+```{r, echo=F, fig.height=5, fig.width=6, fig.align='center', fig.pos="h"}  
+q2response <- eval[, 4]
+q2response <- c(as.character(q2response[!grepl(x=q2response, pattern=",", fixed=T)]), as.character(str_split(string = q2response[grep(x=q2response, pattern=",", fixed=T)], pattern = ", ", simplify = T)))
+q2response <- data.frame(Branch=q2response, Research = eval[,6])
+q2response$Branch <- gsub(x=q2response$Branch, "Science ", "Science", fixed=T)
+
+levels(q2response$Research)[which(levels(q2response$Research) == "Stock assessment and Marine protected areas")] <- "Stock assessment and\nMarine protected areas"
+levels(q2response$Research)[which(levels(q2response$Research) == "Benthic marine invertebrate distribution and movement")] <- "Benthic marine invertebrate\ndistribution and movement"
+levels(q2response$Research)[which(levels(q2response$Research) == "Fish habitat modelling and assessment")] <- "Fish habitat modelling\nand assessment"
+
+q2response$Branch[which(q2response$Branch ==  "Great Lakes Laboratory of Fisheries and Aquatic Sciences")] <- "Great Lakes Laboratory of\nFisheries and Aquatic Sciences"
+
+print(ggplot() + geom_bar(data=q2response, aes(Research, fill=Branch)) + theme_classic() +
+  xlab(NULL) + #"What is your research area?") +
+  ylab("Number of survey respondents")  +
+   scale_fill_manual(values=brewer.set1(4)) +
+   coord_flip() +
+   theme(legend.position = c(0.7, 0.5)))
+```  
+
+_Figure 2. Survey responses by research area._
+
+Participants were asked to rate the forum on various factors on a scale of 0-5 (low to high). The minimum rating for any question was 2, and median ratings were 4 or 5 (Figure 3). 
+
+
+```{r, echo=F, fig.height=3, fig.align='center', fig.pos="h"}
+ratings <- eval[, c(1,7:15)]
+ratings <- melt(ratings, id.vars = "Timestamp")
+ratings$variable <- as.factor(gsub(ratings$variable, pattern=".", replacement =" ", fixed=T))
+ratings$variable <- as.factor(gsub(ratings$variable, pattern="  ", replacement =" ", fixed=T))
+ratings$value <- as.numeric(ratings$value)
+
+numbering <- c("6. ", "8. ", "2. ", "3. ", "9. ", "1. ", "5. ", "4. ", "7. ")
+levels(ratings$variable) <- paste0(numbering, levels(ratings$variable))
+ratings$variable <- as.factor(as.character(ratings$variable))
+
+ratings_avg <- ddply(.data=ratings, .(variable),
+                     summarize,
+                     mean_rating = mean(value))
+
+ratings$variable <- fct_rev(ratings$variable)
+
+print(ggplot() + geom_boxplot(data=ratings, aes(variable, value)) + 
+        #geom_point(data=ratings_avg, aes(variable, mean_rating), shape=5)+
+        theme_classic() +
+  xlab(NULL) + ylab("Rating from low to high") + 
+  ylim(0,5) +
+  coord_flip())  
+
+```  
+
+Regarding the learning level of the workshop, participants mostly found the difficulty and time allocations appropriate for their level. 
+
+```{r, echo=F, fig.height=3, fig.width=7, fig.align='center', fig.pos="h"}
+pacing <- eval[, c(1,16:17)]
+exercises <- pacing %>% 
+   select(Timestamp, Time.allocation.for.exercises)
+
+#length(levels(exercises$Time.allocation.for.exercises)) == 3
+# so no need to add level
+
+exercises <- as.data.frame(table(exercises$Time.allocation.for.exercises)) %>% 
+   mutate(un.id=1)
+
+exercises$Var1 <- factor(exercises$Var1, levels=c("Too much time",
+                                                  "Just right",
+                                                  "Not enough time"))
+
+difficulty <- pacing %>% 
+   select(Timestamp, Difficulty.of.exercises)
+#length(levels(difficulty$Difficulty.of.exercises)) == 3
+if(length(levels(difficulty$Difficulty.of.exercises)) < 3){
+   answers <- c("Too difficult", "Just right", "Too simple")
+   missing <- answers[which(!answers %in% levels(difficulty$Difficulty.of.exercises))]
+   levels(difficulty$Difficulty.of.exercises) <- c(levels(difficulty$Difficulty.of.exercises), missing)
+}
+
+difficulty <- as.data.frame(table(difficulty$Difficulty.of.exercises)) %>%
+   mutate(un.id=1)
+
+difficulty$Var1 <- factor(difficulty$Var1, levels=c("Too simple", 
+                                                  "Just right",
+                                                  "Too difficult"))
+
+
+p1 <- ggplot() + geom_bar(data=exercises, aes(x=Var1, y=Freq), stat="identity") + 
+   theme_classic() +
+   xlab(NULL) + #"What is your research area?") +
+   ylab("Number of survey respondents")  +
+   #coord_flip() +
+   ggtitle("Time allocation for exercises")
+
+p2 <- ggplot() + geom_bar(data=difficulty, aes(x=Var1, y=Freq), stat="identity") + 
+   theme_classic() +
+   xlab(NULL) + #"What is your research area?") +
+   ylab("Number of survey respondents")  +
+   #coord_flip() +
+   ggtitle("Difficulty of exercises")
+
+print(p1+p2)
+
+```  
+
+_Figure 3. Summary of responses to course level questions. Each question was answered by all 23 respondents._
+
+
+All survey respondents said they would recommend this forum to others. Reasons provided were:
+
+   * Highly relevant topic
+   * Clear explanations
+   * Technical expertise of the instructors
+   * Well-organized online delivery
+   * Useful reference materials
+   
+The majority (96%) of respondents will try to use the methods presented in the forum, partly due to the flexibility and accessibility of the approach. They also felt that the course activities and materials would allow them to successfully apply the framework to their own projects in the future.
+
+Survey respondents had remaining questions on:
+
+   * Bayesian inference
+   * Code syntax for model components and formulae
+   * Incorporating dynamic or temporal environmental covariates
+
+Survey respondents were divided on the amount of technical support required for course software installation. Of 12 responses, 3 participants would have preferred extra support. The remaining 9 respondents were able to install without issue, however some of these participants noted that they had previously installed the software for other purposes and had encountered issues in the past, or that they had administrative privileges on their computer.
+
+For future training opportunities, respondents suggested the following topics:
+
+   * Applying this framework on acoustic telemetry data, perhaps in collaboration with OTN
+   * Bayesian inference
+   * Applying the framework for spatio-temporal models
+   * Causality
+   * Multispecies or community models
+   * Analysis of autocorrelated data
+   
