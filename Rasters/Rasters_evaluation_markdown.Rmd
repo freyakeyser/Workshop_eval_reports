@@ -1,5 +1,5 @@
 ---
-title: "Spatial Data to Support Analysis and Modelling at DFO"
+title: "Rasters, Interactive Maps, and Coding Applications Workshop"
 output:
   word_document: 
     reference_docx: InteractiveToolsMarkdownstyles.docx
@@ -19,13 +19,13 @@ require(tidyr)
 require(pandoc)
 require(plyr)
 require(pals)
+require(patchwork)
 
 ```
 
-### Held November 23, 2020 via Microsoft Teams
-### Led by Tana Worcester, DFO, Maritimes region
-### Organized by Shelley Lang, Jessica Nephin, Gordana Lazin, Laura Feyrer, and Catalina Gomez
-### Panelists: Gordana Lazin, Joanne Lessard, Daniel Duplisea, and Frédéric Cyr
+### Held January 12-13, 2021 via Microsoft Teams
+### Instructors: David Beauchesne and Kevin Cazelles
+### Organizer: Catalina Gomez
 ### Report produced by Freya Keyser and Catalina Gomez
 
 
@@ -39,16 +39,15 @@ Insert text here
 
 # Evaluation by participants
 
-Forum participants were asked to complete an evaluation survey at the end of the forum. Of the 111 attendees, 28 responses were received (25% response rate). Responses were received from DFO and ECCC participants based in the Pacific, Maritimes, Gulf, NHQ, Central and Arctic, and Newfoundland and Labrador regions (Figure 1). Participants worked in a wide range of research areas (Figure 2). 
+Forum participants were asked to complete an evaluation survey at the end of the forum. Of the **n** attendees, 17 responses were received (**25%** response rate). Responses were received from DFO and ECCC participants based in the Pacific, Maritimes, Gulf, and Ontario and Prairie regions (Figure 1). Participants worked in a wide range of research areas (Figure 2). 
 
 
 ```{r, echo=F, fig.height=4, fig.width=6, fig.align='center', fig.pos="h"}  
-eval <- read.csv("./Spatial Data to Support Analysis and Modelling at DFO - 2nd National Forum.csv")
+eval <- read.csv("./Raster Workshop Evaluation.csv")
 levels(eval[,2]) <- c("ECCC", "DFO")
 
 q1 <- data.frame(table(eval[, 2:3]))
 names(q1) <- c("Dept", "Region", "Freq")
-levels(q1$Region)[1] <- "Ontario & Prairie and/or Arctic"
 
 print(ggplot() + geom_bar(data=q1, aes(Dept, Freq, fill=Region), stat="identity", colour="black", position="dodge") + theme_classic() +
   xlab("What Department/Agency are you in?") +
@@ -61,40 +60,33 @@ _Figure 1. Survey responses by department and region._
 ```{r, echo=F, fig.height=5, fig.width=6, fig.align='center', fig.pos="h"}  
 q2response <- eval[, 4]
 q2response <- c(as.character(q2response[!grepl(x=q2response, pattern=",", fixed=T)]), as.character(str_split(string = q2response[grep(x=q2response, pattern=",", fixed=T)], pattern = ", ", simplify = T)))
-q2response <- tolower(q2response)
-q2response <- gsub(q2response, pattern="aquatic inv", replacement="inv")
-q2response <- gsub(q2response, pattern="science ", replacement="science")
-q2response <- gsub(q2response, pattern="cws", replacement="CWS")
-q2response <- data.frame(Branch=q2response, Research = eval[,5])
-q2response$Branch <- gsub(q2response$Branch, pattern="science", replacement="Science")
-q2response$Branch <- gsub(q2response$Branch, pattern="aquatic", replacement="Aquatic")
-q2response$Research <- gsub(q2response$Research, pattern="Modelling ", replacement="Modelling\n")
-q2response$Research <- gsub(q2response$Research, pattern="and Maritime", replacement="and\nMaritime")
-q2response$Research <- gsub(q2response$Research, pattern=" planning", replacement="\nplanning")
-q2response$Research <- gsub(q2response$Research, pattern="and Marine", replacement="and\nMarine")
-
+q2response <- data.frame(Branch=q2response, Research = eval[,6])
+q2response$Branch <- gsub(x=q2response$Branch, "Science ", "Science", fixed=T)
+q2response$Branch <- gsub(x=q2response$Branch, "science", "Science", fixed=T)
+levels(q2response$Research)[which(levels(q2response$Research) == "Cumulative impacts, stressors, Marine Spatial Planning")] <- 
+   "Cumulative impacts, stressors,\nMarine Spatial Planning"
 
 print(ggplot() + geom_bar(data=q2response, aes(Research, fill=Branch)) + theme_classic() +
   xlab(NULL) + #"What is your research area?") +
   ylab("Number of survey respondents")  +
-   scale_fill_manual(values=brewer.set1(4)) +
+   scale_fill_manual(values=brewer.set1(6)) +
    coord_flip() +
    theme(legend.position = c(0.8, 0.2)))
 ```  
 
 _Figure 2. Survey responses by research area._
 
-Participants were asked to rate the forum on various factors on a scale of 0-5 (low to high). The minimum rating for any question was 2, and median ratings were 4 or 5 (Figure 3). 
+Participants were asked to rate the forum on various factors on a scale of 0-5 (low to high). The minimum rating for any question was 1, and median ratings were 3, 4 or 5 (Figure 3). 
 
 
 ```{r, echo=F, fig.height=3, fig.align='center', fig.pos="h"}
-ratings <- eval[, c(1,7:12)]
+ratings <- eval[, c(1,7:15)]
 ratings <- melt(ratings, id.vars = "Timestamp")
 ratings$variable <- as.factor(gsub(ratings$variable, pattern=".", replacement =" ", fixed=T))
 ratings$variable <- as.factor(gsub(ratings$variable, pattern="  ", replacement =" ", fixed=T))
 ratings$value <- as.numeric(ratings$value)
 
-numbering <- c("3. ", "5. ", "6. ", "4. ", "1. ", "2. ")
+numbering <- c("6. ", "8. ", "2. ", "3. ", "9. ", "1. ", "5. ", "4. ", "7. ")
 levels(ratings$variable) <- paste0(numbering, levels(ratings$variable))
 ratings$variable <- as.factor(as.character(ratings$variable))
 
@@ -113,49 +105,87 @@ print(ggplot() + geom_boxplot(data=ratings, aes(variable, value)) +
 
 ```  
 
-_Figure 3. Summary of responses to rating questions. Each rating question was answered by all 28 respondents._
+Regarding the learning level of the workshop, participants mostly found the difficulty and time allocations appropriate for their level. 
 
-Survey respondents provided examples of successful initiatives to provide broader access to spatial data beyond those discussed in the forum. The examples were:
+```{r, echo=F, fig.height=3, fig.width=7, fig.align='center', fig.pos="h"}
+pacing <- eval[, c(1,16:17)]
+exercises <- pacing %>% 
+   select(Timestamp, Time.allocation.for.exercises)
 
-   * Bi-regional (Gulf/Maritimes) collaborative meetings between IP and Science
-   * An R Shiny tool for freshwater ecosystems
-   * External stakeholder outreach project to promote the use of public databases
-   * The GIS hub
-   * Mendeley Data online repository
-   * Environment and Climate Change Canada's Emergency Response App
-   * Regional data inventories
+# if(length(levels(exercises$Time.allocation.for.exercises)) < 3){
+#    answers <- c("Too much time", "Just right", "Not enough time")
+#    missing <- answers[which(!answers %in% levels(exercises$Time.allocation.for.exercises))]
+#    levels(exercises$Time.allocation.for.exercises) <- c(levels(exercises$Time.allocation.for.exercises), missing)
+# }
+#length(levels(exercises$Time.allocation.for.exercises)) == 3
+# so no need to add level
+
+exercises <- as.data.frame(table(exercises$Time.allocation.for.exercises)) %>% 
+   mutate(un.id=1)
+
+exercises$Var1 <- factor(exercises$Var1, levels=c("Too much time",
+                                                  "Just right",
+                                                  "Not enough time"))
+
+difficulty <- pacing %>% 
+   select(Timestamp, Difficulty.of.exercises)
+#length(levels(difficulty$Difficulty.of.exercises)) == 3
+if(length(levels(difficulty$Difficulty.of.exercises)) < 3){
+   answers <- c("Too difficult", "Just right", "Too simple")
+   missing <- answers[which(!answers %in% levels(difficulty$Difficulty.of.exercises))]
+   levels(difficulty$Difficulty.of.exercises) <- c(levels(difficulty$Difficulty.of.exercises), missing)
+}
+
+difficulty <- as.data.frame(table(difficulty$Difficulty.of.exercises)) %>%
+   mutate(un.id=1)
+
+difficulty$Var1 <- factor(difficulty$Var1, levels=c("Too simple", 
+                                                  "Just right",
+                                                  "Too difficult"))
+
+
+p1 <- ggplot() + geom_bar(data=exercises, aes(x=Var1, y=Freq), stat="identity") + 
+   theme_classic() +
+   xlab(NULL) + #"What is your research area?") +
+   ylab("Number of survey respondents")  +
+   #coord_flip() +
+   ggtitle("Time allocation for exercises")
+
+p2 <- ggplot() + geom_bar(data=difficulty, aes(x=Var1, y=Freq), stat="identity") + 
+   theme_classic() +
+   xlab(NULL) + #"What is your research area?") +
+   ylab("Number of survey respondents")  +
+   #coord_flip() +
+   ggtitle("Difficulty of exercises")
+
+print(p1+p2)
+
+```  
+
+_Figure 3. Summary of responses to course level questions. Each question was answered by all 17 respondents._
+
+
+All survey respondents said they would recommend this forum to others. Some noted that the course was best for advanced users. Participants commented on:
+
+   * Relevant and up-to-date information
+   * Broad overview
+   * Technical expertise of the instructors
+   * Useful reference materials
    
+All of the respondents will try to use the methods presented in the workshop, primarily because they find these approaches useful for communicating results, and for making analyses accessible.
 
-All survey respondents said they would recommend this forum to others. Reasons provided were:
+Several respondents still did not feel confident in their skills upon completing the workshop, but felt that the reference materials would be useful in the future. Survey respondents had remaining questions on:
 
-   * Inter-regional learning opportunity
-   * Discussions were well moderated
-   * Broad overview of information
-   * Good participant engagement 
-   * Collaborative problem solving
-   * Opportunity for data managers to receive feedback
-   * Informative and concise presentations
-   
-The majority (89%) of respondents will try to adopt ideas presented in the forum. Some respondents noted that they were already considering using some of the tools discussed (e.g. Github, online data platforms), others said that they were previously unaware of the available resources but are keen to use them now, and others felt that the exisiting resources were not applicable to their work. Respondents also acknowledged a need for creating standards and collaborating with IT to ensure interoperability, and stressed the need for ongoing engagement to develop an effective long term structure. 
-
-Survey respondents had remaining questions on:
-
-   * Matching data output formats to data analysis workflows (e.g. format should be R-friendly)
-   * Government and IT-approved processes for data sharing
-   * Development of standards for sharing data and code
-   * Limitations and benefits of using code or GIS point-and-click tools
-   * Potential for artificial intelligence and machine learning
-   * How to contribute their data
-   * Linkages to Marine Spatial Planning
-  
+   * Basics of spatial analysis (using rasters and polygons)
+   * Shiny apps
+   * Map/figure design and formatting
 
 For future training opportunities, respondents suggested the following topics:
 
-   * Tutorials on code-writing best practices to facilitate sharing
-   * Incorporating open-source tools (GDAL, R) into data pipelines
-   * Developing data discovery/viewing platforms
-   * Attribution of data products; intellectual property licensing
-   * Presentations from IM&TS and Science Data Management on infrastructure and plans
-   * Discussions with Open Government program
-   * Marine Spatial Planning
-   
+   * Shiny
+   * CSASdown
+   * Science communication
+   * Spatial analysis in R
+   * Map design
+   * Statistical modelling
+   * Accessing remotely sensed data
